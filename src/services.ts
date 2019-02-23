@@ -5,7 +5,7 @@
 'use strict';
 
 import {
-    DocumentSelector, MessageType,
+    DocumentSelector, MessageActionItem, MessageType,
     TextDocumentPositionParams, ReferenceParams, CodeActionParams, CodeLensParams, DocumentFormattingParams,
     DocumentRangeFormattingParams, DocumentOnTypeFormattingParams, RenameParams, DocumentLinkParams,
     WorkspaceClientCapabilities, DidChangeTextDocumentParams, Diagnostic, TextDocument, CompletionItem, CompletionList,
@@ -243,6 +243,6 @@ export interface OutputChannel extends Disposable {
 }
 
 export interface Window {
-    showMessage<T>(type: MessageType, message: string, ...actions: T[]): PromiseLike<T | undefined>;
+    showMessage<T extends MessageActionItem>(type: MessageType, message: string, ...actions: T[]): PromiseLike<T | undefined>;
     createOutputChannel(name: string): OutputChannel;
 }
