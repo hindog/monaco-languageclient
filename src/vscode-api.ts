@@ -3,12 +3,21 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import * as vscode from "vscode";
+import {MessageItem, ViewColumn} from 'vscode'
+import * as vscode from 'vscode'
+
 import URI from "vscode-uri"
-import { Disposable } from "./disposable";
+import {Disposable} from "./disposable";
 import {
-    Services, Event, Diagnostic, WorkspaceEdit, isDocumentSelector,
-    MessageActionItem, MessageType, OutputChannel, CompletionTriggerKind, DocumentIdentifier
+    CompletionTriggerKind,
+    Diagnostic,
+    DocumentIdentifier,
+    Event,
+    isDocumentSelector,
+    MessageType,
+    Services,
+    WorkspaceEdit,
+    OutputChannel
 } from "./services";
 
 export function createVSCodeApi(servicesProvider: Services.Provider): typeof vscode {
@@ -43,6 +52,21 @@ export function createVSCodeApi(servicesProvider: Services.Provider): typeof vsc
         append = unsupported
         contains = unsupported
     }
+
+    class OutChannel implements vscode.OutputChannel {
+        constructor(public name: string, public channel?: OutputChannel) { }
+        append(value: string): void { }
+        appendLine(value: string): void { }
+        clear(): void { }
+        dispose(): void { }
+        hide(): void { }
+        show(column?: ViewColumn | boolean, preserveFocus?: boolean): void {
+            if (this.channel) {
+                this.channel.show(preserveFocus)
+            }
+        };
+    }
+
     const workspace: typeof vscode.workspace = {
         createFileSystemWatcher(globPattern, ignoreCreateEvents, ignoreChangeEvents, ignoreDeleteEvents): vscode.FileSystemWatcher {
             const services = servicesProvider();
@@ -502,15 +526,9 @@ export function createVSCodeApi(servicesProvider: Services.Provider): typeof vsc
         setLanguageConfiguration: unsupported,
         onDidChangeDiagnostics: unsupported
     };
-    function showMessage(type: MessageType, arg0: any, arg1: any): Thenable<undefined | MessageActionItem> {
-        if (typeof arg0 !== "string") {
-            throw new Error('unexpected message: ' + JSON.stringify(arg0));
-        }
-        const message = arg0;
-        if (arg1 !== undefined && !Array.isArray(arg1)) {
-            throw new Error('unexpected actions: ' + JSON.stringify(arg1));
-        }
-        const actions = arg1 || [];
+    function showMessage<T extends MessageItem>(type: MessageType, message: string, ...items: T[]): Thenable<T | undefined> {
+
+        const actions = items || [];
         const { window } = servicesProvider();
         if (!window) {
             return Promise.resolve(undefined);
@@ -518,22 +536,18 @@ export function createVSCodeApi(servicesProvider: Services.Provider): typeof vsc
         return window.showMessage(type, message, ...actions);
     }
     const window: typeof vscode.window = {
-        showInformationMessage: showMessage.bind(undefined, MessageType.Info),
-        showWarningMessage: showMessage.bind(undefined, MessageType.Warning),
-        showErrorMessage: showMessage.bind(undefined, MessageType.Error),
         createOutputChannel(name: string): vscode.OutputChannel {
             const { window } = servicesProvider();
-            const createOutputChannel = window ? window.createOutputChannel : undefined;
-            const channel: OutputChannel = createOutputChannel ? createOutputChannel.bind(window)(name) : undefined;
-            return {
-                name,
-                append: channel.append.bind(channel),
-                appendLine: channel.appendLine.bind(channel),
-                clear: unsupported,
-                show: channel.show.bind(channel),
-                hide: unsupported,
-                dispose: channel.dispose.bind(channel)
-            }
+            return new OutChannel(name, window ? window.createOutputChannel(name) : undefined);
+        },
+        showInformationMessage<T extends MessageItem>(message: string, ...items: T[]): Thenable<T | undefined> {
+            return showMessage(MessageType.Info, message, ...items);
+        },
+        showWarningMessage<T extends MessageItem>(message: string, ...items: T[]): Thenable<T | undefined> {
+            return showMessage(MessageType.Warning, message, ...items);
+        },
+        showErrorMessage<T extends MessageItem>(message: string, ...items: T[]): Thenable<T | undefined> {
+            return showMessage(MessageType.Error, message, ...items);
         },
         showTextDocument: unsupported,
         createTextEditorDecorationType: unsupported,

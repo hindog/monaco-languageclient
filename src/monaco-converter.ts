@@ -3,6 +3,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 import * as Is from 'vscode-languageserver-protocol/lib/utils/is';
+import {TextDocumentEdit} from 'vscode-languageserver-types'
 import {
     CodeActionParams, CodeLensParams,
     DocumentFormattingParams, DocumentOnTypeFormattingParams,
@@ -373,10 +374,12 @@ export class ProtocolToMonacoConverter {
         }
         const edits: monaco.languages.ResourceTextEdit[] = [];
         if (item.documentChanges) {
+            // TODO: handle CreateFile | RenameFile | DeleteFile
             for (const change of item.documentChanges) {
-                const resource = monaco.Uri.parse(change.textDocument.uri);
-                const version = typeof change.textDocument.version === 'number' ? change.textDocument.version : undefined;
-                edits.push(this.asResourceEdits(resource, change.edits, version));
+                const docEdit = change as TextDocumentEdit
+                const resource = monaco.Uri.parse(docEdit.textDocument.uri);
+                const version = typeof docEdit.textDocument.version === 'number' ? docEdit.textDocument.version : undefined;
+                edits.push(this.asResourceEdits(resource, docEdit.edits, version));
             }
         } else if (item.changes) {
             for (const key of Object.keys(item.changes)) {
